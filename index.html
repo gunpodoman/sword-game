@@ -1,281 +1,664 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Sword, Hammer, Sparkles, Skull, Coins, Zap, Trophy, RefreshCcw } from 'lucide-react';
-
-// --- 게임 데이터 및 설정 ---
-const SWORD_TIERS = [
-  { level: 0, name: "나뭇가지", color: "text-amber-800", shadow: "shadow-amber-900", rate: 100, cost: 10, value: 5 },
-  { level: 1, name: "녹슨 단검", color: "text-stone-500", shadow: "shadow-stone-600", rate: 90, cost: 50, value: 25 },
-  { level: 2, name: "수습 기사의 검", color: "text-slate-400", shadow: "shadow-slate-500", rate: 80, cost: 150, value: 75 },
-  { level: 3, name: "정교한 강철검", color: "text-slate-200", shadow: "shadow-slate-300", rate: 75, cost: 300, value: 150 },
-  { level: 4, name: "푸른 서슬의 검", color: "text-blue-400", shadow: "shadow-blue-500", rate: 70, cost: 600, value: 300 },
-  { level: 5, name: "타오르는 붉은 검", color: "text-red-500", shadow: "shadow-red-600", rate: 60, cost: 1000, value: 500 },
-  { level: 6, name: "황금 사자 검", color: "text-yellow-400", shadow: "shadow-yellow-500", rate: 50, cost: 2000, value: 1000 },
-  { level: 7, name: "에메랄드 드래곤", color: "text-emerald-400", shadow: "shadow-emerald-500", rate: 40, cost: 4000, value: 2000 },
-  { level: 8, name: "심연의 흑요석", color: "text-purple-500", shadow: "shadow-purple-600", rate: 30, cost: 8000, value: 4000 },
-  { level: 9, name: "천상의 빛", color: "text-cyan-300", shadow: "shadow-cyan-400", rate: 20, cost: 15000, value: 7500 },
-  { level: 10, name: "신 살해자 (God Slayer)", color: "text-rose-500", shadow: "shadow-rose-600", rate: 10, cost: 30000, value: 15000 },
-  { level: 11, name: "우주 파괴자 (Cosmic)", color: "text-fuchsia-500", shadow: "shadow-fuchsia-600", rate: 5, cost: 100000, value: 50000 },
-  { level: 12, name: "개발자의 실수 (ERROR)", color: "text-white", shadow: "shadow-white", rate: 1, cost: 999999, value: 999999 },
-];
-
-export default function App() {
-  const [level, setLevel] = useState(0);
-  const [gold, setGold] = useState(100);
-  const [isEnhancing, setIsEnhancing] = useState(false);
-  const [logs, setLogs] = useState([{ text: "검 강화 게임에 오신 것을 환영합니다!", type: "info" }]);
-  const [shake, setShake] = useState(false);
-  const [flash, setFlash] = useState(""); // 'success' or 'fail'
-  const logEndRef = useRef(null);
-
-  const currentTier = SWORD_TIERS[level];
-  const nextTier = SWORD_TIERS[level + 1];
-
-  // 로그 자동 스크롤
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
-
-  // 로그 추가 함수
-  const addLog = (text, type = "info") => {
-    setLogs(prev => [...prev.slice(-19), { text, type }]); // 최근 20개만 유지
-  };
-
-  // 골드 획득 (사냥)
-  const handleHunt = () => {
-    const earn = Math.floor(currentTier.value * (1 + Math.random() * 0.5));
-    setGold(prev => prev + earn);
-    
-    // 클릭 효과 (간단한 파티클 대신 텍스트 효과로 대체 가능하지만 여기선 생략)
-  };
-
-  // 강화 시도
-  const handleEnhance = () => {
-    if (isEnhancing) return;
-    if (!nextTier) {
-      addLog("이미 최고 레벨입니다!", "info");
-      return;
-    }
-    if (gold < nextTier.cost) {
-      addLog("골드가 부족합니다! 사냥을 떠나세요.", "error");
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-      return;
-    }
-
-    setGold(prev => prev - nextTier.cost);
-    setIsEnhancing(true);
-
-    // 강화 연출 (딜레이)
-    setTimeout(() => {
-      const success = Math.random() * 100 < nextTier.rate;
-      
-      if (success) {
-        // 성공
-        setLevel(prev => prev + 1);
-        addLog(`[성공] ${nextTier.name} (+${level + 1}) 강화 성공!`, "success");
-        setFlash("success");
-      } else {
-        // 실패 로직
-        setFlash("fail");
-        // 레벨 5 이하는 유지, 6~9는 하락, 10 이상은 파괴(0으로 초기화)
-        if (level < 5) {
-          addLog(`[실패] 강화에 실패했지만 검은 무사합니다.`, "warning");
-        } else if (level < 10) {
-          addLog(`[실패] 강화 실패! 검의 등급이 하락했습니다.`, "error");
-          setLevel(prev => prev - 1);
-        } else {
-          addLog(`[파괴] 콰창!! 검이 산산조각 났습니다. (초기화)`, "destroy");
-          setLevel(0);
-        }
-      }
-
-      setIsEnhancing(false);
-      setTimeout(() => setFlash(""), 500);
-    }, 1200); // 1.2초 긴장감
-  };
-
-  // 리셋
-  const handleReset = () => {
-    if(window.confirm("모든 진행상황을 초기화 하시겠습니까?")) {
-      setLevel(0);
-      setGold(100);
-      setLogs([{ text: "새로운 게임이 시작되었습니다.", type: "info" }]);
-    }
-  };
-
-  return (
-    <div className={`min-h-screen bg-gray-900 text-white font-sans overflow-hidden flex flex-col items-center justify-center relative selection:bg-purple-500 selection:text-white`}>
-      
-      {/* 배경 효과 */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-800 via-gray-900 to-black -z-10"></div>
-      
-      {/* 상태바 */}
-      <div className="absolute top-0 w-full p-4 flex justify-between items-center bg-black/30 backdrop-blur-sm border-b border-white/10 z-20">
-        <div className="flex items-center gap-2 text-yellow-400 font-bold text-xl">
-          <Coins className="w-6 h-6 animate-pulse" />
-          <span>{gold.toLocaleString()} G</span>
-        </div>
-        <button onClick={handleReset} className="text-gray-500 hover:text-white transition-colors">
-          <RefreshCcw size={20} />
-        </button>
-      </div>
-
-      {/* 메인 게임 영역 */}
-      <div className="relative w-full max-w-md flex flex-col items-center gap-8 z-10 px-4">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tennis: Manual Serve</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: 'Segoe UI', sans-serif; }
         
-        {/* 타이틀 */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">
-            SWORD ASCENSION
-          </h1>
-          <p className="text-gray-400 text-xs tracking-widest uppercase">Forge Your Destiny</p>
+        /* UI 레이어 */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            z-index: 10;
+        }
+        .score-box {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 15px 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border: 3px solid #fff;
+        }
+        .score-box.player { border-bottom: 5px solid #1E90FF; }
+        .score-box.ai { border-bottom: 5px solid #FF4500; }
+        .score-label { font-size: 16px; font-weight: bold; color: #555; text-transform: uppercase; margin-bottom: 5px; }
+        .score-num { font-size: 50px; font-weight: 900; color: #222; line-height: 1; }
+        
+        /* 메시지 오버레이 */
+        #message-overlay {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 20;
+            width: 100%;
+        }
+        #main-msg {
+            font-size: 100px;
+            font-weight: 900;
+            color: #ff3333;
+            text-transform: uppercase;
+            text-shadow: 4px 4px 0px white, -2px -2px 0 white;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #sub-msg {
+            font-size: 30px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* 서브 안내 메시지 */
+        #serve-guide {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            pointer-events: none;
+            display: none;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        /* 조작법 안내 */
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            pointer-events: none;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .key { display: inline-block; background: #fff; color: #333; padding: 2px 8px; border-radius: 5px; font-weight: bold; margin: 0 3px; box-shadow: 0 2px 0 #ccc; }
+        .highlight { color: #FFD700; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <div class="score-box player">
+            <div class="score-label">Player</div>
+            <div id="score-p" class="score-num">0</div>
         </div>
-
-        {/* 검 디스플레이 영역 */}
-        <div className={`relative group w-64 h-80 flex items-center justify-center transition-all duration-300 ${shake ? 'animate-shake' : ''}`}>
-           {/* 아우라 효과 */}
-           <div className={`absolute inset-0 rounded-full blur-3xl opacity-20 transition-colors duration-1000 ${currentTier.color.replace('text-', 'bg-')}`}></div>
-           
-           {/* 검 아이콘 */}
-           <div className={`relative transition-all duration-500 transform ${isEnhancing ? 'scale-110 animate-bounce' : 'hover:scale-105'} ${flash === 'success' ? 'scale-125 brightness-150' : ''} ${flash === 'fail' ? 'scale-90 opacity-50 grayscale' : ''}`}>
-              <Sword 
-                strokeWidth={1}
-                className={`w-64 h-64 drop-shadow-2xl transition-all duration-500 ${currentTier.color} ${level >= 10 ? 'animate-pulse' : ''}`} 
-                style={{ 
-                  filter: `drop-shadow(0 0 ${level * 3}px currentColor)` 
-                }}
-              />
-              
-              {/* 강화 중 파티클 (간소화) */}
-              {isEnhancing && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Sparkles className="w-full h-full text-white animate-spin-slow opacity-50" />
-                </div>
-              )}
-           </div>
-
-           {/* 검 이름 및 레벨 */}
-           <div className="absolute -bottom-8 w-full text-center">
-             <div className={`text-2xl font-black tracking-wide ${currentTier.color} drop-shadow-md`}>
-               +{level} {currentTier.name}
-             </div>
-             <div className="text-xs text-gray-500 mt-1">가치: {currentTier.value.toLocaleString()} G</div>
-           </div>
+        <div class="score-box ai">
+            <div class="score-label">Computer</div>
+            <div id="score-a" class="score-num">0</div>
         </div>
-
-        {/* 컨트롤 패널 */}
-        <div className="w-full bg-gray-800/50 backdrop-blur-md rounded-2xl border border-white/10 p-6 space-y-4 shadow-2xl mt-8">
-          
-          {/* 강화 정보 */}
-          {nextTier ? (
-            <div className="flex justify-between items-center text-sm mb-2 px-2">
-              <div className="flex flex-col">
-                <span className="text-gray-400">성공 확률</span>
-                <span className={`font-bold text-lg ${nextTier.rate < 30 ? 'text-red-400' : 'text-green-400'}`}>
-                  {nextTier.rate}%
-                </span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-gray-400">강화 비용</span>
-                <span className={`font-bold text-lg ${gold >= nextTier.cost ? 'text-yellow-400' : 'text-red-500'}`}>
-                  {nextTier.cost.toLocaleString()} G
-                </span>
-              </div>
-            </div>
-          ) : (
-             <div className="text-center text-yellow-400 font-bold py-2">전설의 끝에 도달했습니다!</div>
-          )}
-
-          {/* 버튼 그룹 */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleHunt}
-              disabled={isEnhancing}
-              className="group relative overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800 p-4 rounded-xl border border-slate-600 hover:border-slate-400 transition-all active:scale-95 disabled:opacity-50"
-            >
-              <div className="relative z-10 flex flex-col items-center gap-1">
-                <Skull className="w-6 h-6 text-gray-300 group-hover:text-red-400 transition-colors" />
-                <span className="font-bold text-gray-200">몬스터 사냥</span>
-                <span className="text-xs text-gray-500">+{Math.floor(currentTier.value)}~ G</span>
-              </div>
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            </button>
-
-            <button
-              onClick={handleEnhance}
-              disabled={isEnhancing || !nextTier}
-              className={`group relative overflow-hidden p-4 rounded-xl border transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
-                ${!nextTier ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-br from-indigo-600 to-purple-700 border-indigo-500 hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]'}
-              `}
-            >
-               {/* 로딩 바 */}
-               {isEnhancing && (
-                 <div className="absolute inset-0 bg-black/20 z-0">
-                   <div className="h-full bg-white/20 animate-progress origin-left"></div>
-                 </div>
-               )}
-
-              <div className="relative z-10 flex flex-col items-center gap-1">
-                {isEnhancing ? (
-                  <RefreshCcw className="w-6 h-6 text-white animate-spin" />
-                ) : (
-                  <Hammer className="w-6 h-6 text-indigo-200 group-hover:text-white transition-colors" />
-                )}
-                <span className="font-bold text-white">
-                  {isEnhancing ? "강화 중..." : "강화 하기"}
-                </span>
-                <span className="text-xs text-indigo-200 group-hover:text-white">
-                  {nextTier ? `다음: ${nextTier.name}` : "MAX LEVEL"}
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* 로그 창 */}
-        <div className="w-full h-32 bg-black/40 rounded-xl border border-white/5 p-3 overflow-y-auto font-mono text-xs space-y-1 shadow-inner scrollbar-hide">
-          {logs.map((log, i) => (
-            <div key={i} className={`
-              ${log.type === 'success' ? 'text-green-400' : ''}
-              ${log.type === 'fail' ? 'text-orange-400' : ''}
-              ${log.type === 'destroy' ? 'text-red-500 font-bold' : ''}
-              ${log.type === 'error' ? 'text-red-300' : ''}
-              ${log.type === 'warning' ? 'text-yellow-300' : ''}
-              ${log.type === 'info' ? 'text-gray-400' : ''}
-            `}>
-              {i > 0 && <span className="text-gray-700 mr-2">[{i}]</span>}
-              {log.text}
-            </div>
-          ))}
-          <div ref={logEndRef} />
-        </div>
-
-      </div>
-
-      {/* 전체 화면 효과 (플래시) */}
-      <div className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${flash === 'success' ? 'bg-white opacity-30' : flash === 'fail' ? 'bg-red-900 opacity-30' : 'opacity-0'}`}></div>
-
-      {/* 애니메이션 스타일 정의 */}
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px) rotate(-5deg); }
-          75% { transform: translateX(5px) rotate(5deg); }
-        }
-        .animate-shake {
-          animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        @keyframes progress {
-          0% { width: 0%; }
-          100% { width: 100%; }
-        }
-        .animate-progress {
-          animation: progress 1.2s linear forwards;
-        }
-        .animate-spin-slow {
-          animation: spin 3s linear infinite;
-        }
-      `}</style>
     </div>
-  );
-}
+
+    <div id="message-overlay">
+        <div id="main-msg">OUT!</div>
+        <div id="sub-msg">Point to AI</div>
+    </div>
+
+    <div id="serve-guide">CLICK TO TOSS!</div>
+
+    <div id="controls">
+        <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 이동 &nbsp;|&nbsp; 
+        <span class="key">Click</span> 서브(토스+샷) / 스매시
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- 1. 씬 & 카메라 설정 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); 
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 18, 42); 
+        camera.lookAt(0, 0, -5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. 조명 ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffee0, 1.2);
+        dirLight.position.set(-20, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -50;
+        dirLight.shadow.camera.right = 50;
+        dirLight.shadow.camera.top = 50;
+        dirLight.shadow.camera.bottom = -50;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // --- 3. 경기장 ---
+        const COURT_W = 28;
+        const COURT_H = 50;
+
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshPhongMaterial({ color: 0x55aa55 }));
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.05;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const court = new THREE.Mesh(new THREE.PlaneGeometry(COURT_W, COURT_H), new THREE.MeshPhongMaterial({ color: 0x4169E1 }));
+        court.rotation.x = -Math.PI / 2;
+        court.receiveShadow = true;
+        scene.add(court);
+
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const createLine = (w, h, x, z) => {
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lineMat);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(x, 0.01, z);
+            scene.add(mesh);
+        };
+        const lw = 0.4;
+        createLine(COURT_W + lw, lw, 0, COURT_H/2);
+        createLine(COURT_W + lw, lw, 0, -COURT_H/2);
+        createLine(lw, COURT_H, COURT_W/2, 0);
+        createLine(lw, COURT_H, -COURT_W/2, 0);
+        createLine(COURT_W, lw, 0, 13);
+        createLine(COURT_W, lw, 0, -13);
+        createLine(lw, 26, 0, 0);
+
+        // 관중석
+        const spectators = [];
+        function createStand(x, z, rotY) {
+            const group = new THREE.Group();
+            const standGeo = new THREE.BoxGeometry(50, 6, 12);
+            const standMat = new THREE.MeshLambertMaterial({color: 0x666666});
+            const stand = new THREE.Mesh(standGeo, standMat);
+            stand.position.y = 3;
+            stand.castShadow = true;
+            group.add(stand);
+
+            for(let i=0; i<40; i++) {
+                const c = new THREE.Color().setHSL(Math.random(), 0.8, 0.5);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({color: c}));
+                const px = (Math.random()-0.5) * 45;
+                const pz = (Math.random()-0.5) * 8;
+                const py = 6.5 + Math.random() * 0.5;
+                head.position.set(px, py, pz);
+                group.add(head);
+                spectators.push({ mesh: head, baseY: py, speed: Math.random() * 0.1 + 0.05, offset: Math.random() * Math.PI * 2 });
+            }
+            group.position.set(x, 0, z);
+            group.rotation.y = rotY;
+            scene.add(group);
+        }
+        createStand(0, -40, 0);
+        createStand(-32, 0, Math.PI/2);
+        createStand(32, 0, -Math.PI/2);
+
+        // 네트
+        const netGroup = new THREE.Group();
+        const netMesh = new THREE.Mesh(new THREE.BoxGeometry(COURT_W+2, 2.2, 0.1), new THREE.MeshLambertMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+        netMesh.position.y = 1.1;
+        netGroup.add(netMesh);
+        const poleGeo = new THREE.CylinderGeometry(0.3, 0.3, 3);
+        const poleMat = new THREE.MeshPhongMaterial({color: 0x333});
+        const p1 = new THREE.Mesh(poleGeo, poleMat); p1.position.set(-(COURT_W/2+1), 1.5, 0);
+        const p2 = new THREE.Mesh(poleGeo, poleMat); p2.position.set((COURT_W/2+1), 1.5, 0);
+        netGroup.add(p1, p2);
+        scene.add(netGroup);
+
+
+        // --- 4. 캐릭터 ---
+        function createCharacter(color, isPlayer) {
+            const group = new THREE.Group();
+            
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.0, 0.8), new THREE.MeshPhongMaterial({color: color}));
+            body.position.y = 2.0;
+            body.castShadow = true;
+            group.add(body);
+            
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), new THREE.MeshPhongMaterial({color: 0xffccaa}));
+            head.position.y = 3.6; 
+            head.castShadow = true;
+            group.add(head);
+
+            const armPivot = new THREE.Group();
+            armPivot.position.set(isPlayer?0.9:-0.9, 2.8, 0);
+            const arm = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.5, 0.35), new THREE.MeshPhongMaterial({color: 0xffccaa}));
+            arm.position.y = -0.6;
+            armPivot.add(arm);
+
+            const racket = new THREE.Group();
+            racket.position.y = -1.4;
+            racket.rotation.x = Math.PI/2;
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 8, 24), new THREE.MeshStandardMaterial({color: 0xeeeeee}));
+            const net = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16), new THREE.MeshBasicMaterial({color:0xccffcc, transparent:true, opacity:0.3, side:THREE.DoubleSide}));
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8), new THREE.MeshStandardMaterial({color:0x333}));
+            handle.position.y = -0.6;
+            handle.rotation.x = Math.PI/2;
+            rim.add(net);
+            racket.add(rim, handle);
+            armPivot.add(racket);
+            group.add(armPivot);
+
+            armPivot.rotation.x = -0.5; 
+
+            return {mesh: group, arm: armPivot, head: head, isPlayer: isPlayer, action: 'idle', animTime: 0};
+        }
+
+        const player = createCharacter(0x1E90FF, true);
+        player.mesh.position.set(0, 0, 22);
+        scene.add(player.mesh);
+
+        const ai = createCharacter(0xFF4500, false);
+        ai.mesh.position.set(0, 0, -22);
+        ai.mesh.rotation.y = Math.PI;
+        scene.add(ai.mesh);
+
+
+        // --- 5. 공 & 이펙트 ---
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.35, 32, 32), new THREE.MeshPhongMaterial({color: 0xccff00, emissive: 0x112200}));
+        ball.castShadow = true;
+        scene.add(ball);
+
+        const trailSpheres = [];
+        const MAX_TRAIL = 10;
+        for(let i=0; i<MAX_TRAIL; i++) {
+            const s = new THREE.Mesh(new THREE.SphereGeometry(0.3 - (i*0.02), 8, 8), 
+                new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.6 - (i*0.05)}));
+            s.visible = false;
+            scene.add(s);
+            trailSpheres.push(s);
+        }
+        let trailTimer = 0;
+
+        function updateTrail(isSuper) {
+            trailTimer++;
+            if(trailTimer % 2 === 0) { 
+                for(let i=MAX_TRAIL-1; i>0; i--) {
+                    trailSpheres[i].position.copy(trailSpheres[i-1].position);
+                    trailSpheres[i].visible = trailSpheres[i-1].visible;
+                    trailSpheres[i].material.color.setHex(isSuper ? 0xFF4500 : 0xFFFF00);
+                }
+                trailSpheres[0].position.copy(ball.position);
+                trailSpheres[0].visible = true;
+            }
+        }
+        function clearTrail() {
+            trailSpheres.forEach(s => s.visible = false);
+        }
+
+        const particles = [];
+        const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        const particleMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+        for(let i=0; i<20; i++) {
+            const p = new THREE.Mesh(particleGeo, particleMat.clone());
+            p.visible = false;
+            scene.add(p);
+            particles.push({mesh: p, life: 0, vel: new THREE.Vector3()});
+        }
+        function spawnParticles(pos, color) {
+            particles.forEach(p => {
+                if(p.life <= 0) {
+                    p.mesh.position.copy(pos);
+                    p.mesh.material.color.setHex(color);
+                    p.mesh.visible = true;
+                    p.life = 1.0;
+                    p.vel.set((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5);
+                }
+            });
+        }
+
+        // --- 6. 게임 로직 (서브 시스템 추가) ---
+        let ballVel = new THREE.Vector3();
+        let scoreP = 0;
+        let scoreA = 0;
+        
+        // 상태: 'serve_hold', 'serve_toss', 'playing', 'end'
+        let gameState = 'serve_hold'; 
+        let currentServer = 'player'; // 현재 서브권을 가진 사람
+        let lastHitter = null;
+        let isSuperShot = false;
+
+        const serveGuide = document.getElementById('serve-guide');
+        const keys = {w:false, a:false, s:false, d:false};
+        
+        window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
+        
+        // 마우스 클릭 이벤트 (서브 및 스매시)
+        window.addEventListener('mousedown', () => {
+            if (gameState === 'serve_hold' && currentServer === 'player') {
+                // 1. 토스
+                gameState = 'serve_toss';
+                ballVel.set(0, 0.55, 0); // 위로 띄움
+                serveGuide.innerText = "CLICK TO SMASH!";
+                serveGuide.style.color = "#FF4444";
+            } else if (gameState === 'serve_toss' && currentServer === 'player') {
+                // 2. 서브 샷 (스매시)
+                if (ball.position.y > 1.5) { // 너무 낮으면 못 침
+                    swingRacket(player);
+                    gameState = 'playing';
+                    ballVel.set(0, 0.15, -0.9); // 강력한 서브
+                    isSuperShot = true;
+                    lastHitter = 'player';
+                    serveGuide.style.display = 'none';
+                    spawnParticles(ball.position, 0xFFA500);
+                }
+            } else {
+                // 게임 중 스매시 트리거
+                player.isSmashReady = true;
+            }
+        });
+        
+        window.addEventListener('mouseup', () => {
+            player.isSmashReady = false;
+        });
+
+        function showMessage(main, sub, color='#fff') {
+            const m = document.getElementById('main-msg');
+            const s = document.getElementById('sub-msg');
+            m.innerText = main; m.style.color = color;
+            s.innerText = sub;
+            m.style.opacity = 1; m.style.transform = "translate(-50%, -50%) scale(1.1)";
+            s.style.opacity = 1;
+            setTimeout(() => {
+                m.style.opacity = 0; m.style.transform = "translate(-50%, -50%) scale(0.5)";
+                s.style.opacity = 0;
+            }, 1500);
+        }
+
+        // 서브 리셋 함수 (진 사람에게 서브권)
+        function resetServe(loser) {
+            gameState = 'serve_hold';
+            currentServer = loser;
+            
+            // [수정됨] 캐릭터 상태 리셋 (얌전하게 복귀)
+            player.action = 'idle';
+            ai.action = 'idle';
+            player.mesh.position.y = 0;
+            ai.mesh.position.y = 0;
+            player.mesh.rotation.x = 0;
+            ai.mesh.rotation.x = 0;
+
+            clearTrail();
+            isSuperShot = false;
+            ballVel.set(0,0,0);
+            
+            // 공 위치 초기화 (손에 잡기)
+            updateBallHoldPos();
+
+            // UI 안내
+            if (currentServer === 'player') {
+                serveGuide.innerText = "CLICK TO TOSS!";
+                serveGuide.style.color = "#FFD700";
+                serveGuide.style.display = 'block';
+            } else {
+                serveGuide.style.display = 'none';
+                // AI 자동 서브 스케줄
+                setTimeout(aiToss, 1000);
+            }
+        }
+
+        function updateBallHoldPos() {
+            if (gameState === 'serve_hold') {
+                if (currentServer === 'player') {
+                    ball.position.set(player.mesh.position.x + 0.8, player.mesh.position.y + 1.0, player.mesh.position.z - 0.5);
+                } else {
+                    ball.position.set(ai.mesh.position.x - 0.8, ai.mesh.position.y + 1.0, ai.mesh.position.z + 0.5);
+                }
+            }
+        }
+
+        // AI 자동 서브 로직
+        function aiToss() {
+            if (gameState !== 'serve_hold' || currentServer !== 'ai') return;
+            gameState = 'serve_toss';
+            ballVel.set(0, 0.55, 0); // AI 토스
+            setTimeout(aiServeHit, 600); // 0.6초 후 타격
+        }
+
+        function aiServeHit() {
+            if (gameState !== 'serve_toss') return;
+            swingRacket(ai);
+            gameState = 'playing';
+            // AI 서브 방향 (약간 랜덤)
+            const aimX = (Math.random() - 0.5) * 0.3;
+            ballVel.set(aimX, 0.15, 0.7); // 플레이어 쪽으로
+            lastHitter = 'ai';
+        }
+
+        // 초기 시작 (플레이어 서브)
+        resetServe('player'); 
+
+        // --- 7. 메인 루프 ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 1. 플레이어 이동
+            const speed = 0.35;
+            if(keys.a) player.mesh.position.x -= speed;
+            if(keys.d) player.mesh.position.x += speed;
+            if(keys.w) player.mesh.position.z -= speed;
+            if(keys.s) player.mesh.position.z += speed;
+            
+            player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -16, 16);
+            player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, 0, 35);
+
+            // 서브 대기 중일 때 공이 플레이어 따라다님
+            updateBallHoldPos();
+
+            // 2. AI 이동
+            if(gameState === 'playing' || (gameState.startsWith('serve') && currentServer === 'ai')) {
+                let targetX = ai.mesh.position.x;
+                let targetZ = -22;
+
+                if (gameState === 'playing' && ballVel.z < 0) { // 공이 AI 쪽으로 올 때
+                    targetX = ball.position.x;
+                    if(ballVel.y < 0 && ball.position.z > -10) targetZ = -10;
+                    else targetZ = -22; 
+                } else if (gameState === 'serve_toss' && currentServer === 'ai') {
+                    // AI 서브 토스 중 제자리
+                } else {
+                    targetX = 0; // 중앙 복귀
+                }
+                ai.mesh.position.x += (targetX - ai.mesh.position.x) * 0.12; 
+                ai.mesh.position.z += (targetZ - ai.mesh.position.z) * 0.12;
+            }
+
+            // 3. 공 물리
+            if(gameState === 'playing' || gameState === 'serve_toss') {
+                ball.position.add(ballVel);
+                ballVel.y -= 0.012; // 중력
+                
+                if (gameState === 'playing') {
+                    ballVel.x *= 0.995;
+                    ballVel.z *= 0.995;
+                    updateTrail(isSuperShot);
+                }
+
+                // 바닥 충돌
+                if(ball.position.y <= 0.35) {
+                    ball.position.y = 0.35;
+                    
+                    if (gameState === 'serve_toss') {
+                        // 서브 토스했는데 안 치고 땅에 떨어짐 -> 서브 실패(폴트) -> 상대 점수
+                        // 편의상 다시 서브 기회 줌 (리셋)
+                        gameState = 'serve_hold';
+                        ballVel.set(0,0,0);
+                        if(currentServer === 'player') {
+                            serveGuide.innerText = "Try Again!";
+                            setTimeout(() => { serveGuide.innerText = "CLICK TO TOSS!"; }, 1000);
+                        } else {
+                            resetServe('ai'); // AI 실수 재시도
+                        }
+                    } else {
+                        // Playing 상태
+                        spawnParticles(ball.position, 0xcccccc);
+                        
+                        // 라인 판정
+                        const inX = Math.abs(ball.position.x) <= COURT_W/2 + 0.5;
+                        const inZ = Math.abs(ball.position.z) <= COURT_H/2 + 0.5;
+                        
+                        if(!inX || !inZ) { // OUT
+                            handleScore(lastHitter === 'player' ? 'ai' : 'player', "OUT!");
+                        } else { // IN
+                            ballVel.y *= -0.85; 
+                            isSuperShot = false;
+                        }
+                    }
+                }
+
+                // 네트 충돌
+                if(Math.abs(ball.position.z) < 1 && ball.position.y < 2.2) {
+                    ballVel.z *= -0.5;
+                    ballVel.x *= 0.5;
+                    isSuperShot = false;
+                }
+            }
+
+            // 4. 타격 판정 (게임 중)
+            if (gameState === 'playing') {
+                const hitDist = 3.0;
+                // Player Hit
+                if(ballVel.z > 0 && ball.position.z > 0) {
+                    if(ball.position.distanceTo(player.mesh.position) < hitDist) {
+                        swingRacket(player);
+                        ballVel.z *= -1;
+                        
+                        if(player.isSmashReady) {
+                            ballVel.z = -0.9; ballVel.y = 0.15; isSuperShot = true;
+                            spawnParticles(ball.position, 0xFFA500);
+                        } else {
+                            ballVel.z = -0.6; ballVel.y = 0.45; isSuperShot = false;
+                        }
+                        ballVel.x = (ball.position.x - player.mesh.position.x) * 0.3;
+                        lastHitter = 'player';
+                    }
+                }
+                // AI Hit
+                if(ballVel.z < 0 && ball.position.z < 0) {
+                    if(ball.position.distanceTo(ai.mesh.position) < hitDist) {
+                        swingRacket(ai);
+                        ballVel.z *= -1;
+                        if(Math.random() > 0.7) { ballVel.z = 0.85; ballVel.y = 0.2; isSuperShot = true; }
+                        else { ballVel.z = 0.6; ballVel.y = 0.45; isSuperShot = false; }
+                        ballVel.x = (ball.position.x - ai.mesh.position.x) * 0.3;
+                        lastHitter = 'ai';
+                    }
+                }
+
+                // 5. 골 판정
+                if(ball.position.z > 35) handleScore('ai', "GOAL!"); // AI 득점
+                else if(ball.position.z < -35) handleScore('player', "NICE SHOT!"); // Player 득점
+            }
+
+            updateCharacter(player);
+            updateCharacter(ai);
+            updateParticles();
+            updateSpectators();
+            renderer.render(scene, camera);
+        }
+
+        // 점수 처리 및 패자 서브 설정
+        function handleScore(winner, msg) {
+            gameState = 'end';
+            if (winner === 'ai') {
+                scoreA++; document.getElementById('score-a').innerText = scoreA;
+                showMessage(msg, "AI Scores", "#FF4444");
+                ai.action = 'happy'; player.action = 'sad';
+                // 플레이어가 졌으므로 플레이어 서브
+                setTimeout(() => resetServe('player'), 2000);
+            } else {
+                scoreP++; document.getElementById('score-p').innerText = scoreP;
+                showMessage(msg, "Player Scores", "#4444FF");
+                ai.action = 'sad'; player.action = 'happy';
+                // AI가 졌으므로 AI 서브
+                setTimeout(() => resetServe('ai'), 2000);
+            }
+        }
+
+        function swingRacket(char) {
+            let f = 0;
+            const anim = () => {
+                if(f < 8) { char.arm.rotation.x -= 0.4; f++; requestAnimationFrame(anim); }
+                else char.arm.rotation.x = -0.5;
+            }
+            anim();
+        }
+
+        function updateCharacter(c) {
+            c.animTime += 0.1;
+            if(c.action === 'happy') {
+                c.mesh.position.y = Math.abs(Math.sin(c.animTime*5)) * 1.5;
+                c.arm.rotation.z = Math.sin(c.animTime*10);
+            } else if(c.action === 'sad') {
+                c.mesh.rotation.x = 0.5;
+            } else {
+                // 서브가 아니고 게임중이거나 대기일때만 y축 0
+                if (gameState !== 'serve_hold') c.mesh.position.y = 0; 
+                c.mesh.rotation.x = 0; c.arm.rotation.z = 0;
+            }
+        }
+
+        function updateParticles() {
+            particles.forEach(p => {
+                if(p.life > 0) {
+                    p.life -= 0.05;
+                    p.mesh.position.add(p.vel);
+                    p.mesh.scale.setScalar(p.life);
+                    p.mesh.visible = true;
+                } else p.mesh.visible = false;
+            });
+        }
+
+        function updateSpectators() {
+            const time = Date.now() * 0.005;
+            spectators.forEach(s => {
+                s.mesh.position.y = s.baseY + Math.abs(Math.sin(time * s.speed + s.offset)) * 0.5;
+            });
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
