@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Tennis: Balanced Mode</title>
+    <title>3D Tennis: Easy Visuals</title>
     <style>
         body { 
             margin: 0; 
@@ -275,7 +275,7 @@
         createLine(COURT_W, lw, 0, -13);
         createLine(lw, 26, 0, 0);
 
-        // 관중석 (단순화 및 최적화)
+        // 관중석
         const spectators = [];
         function createStand(x, z, rotY) {
             const group = new THREE.Group();
@@ -364,19 +364,35 @@
         ai.mesh.rotation.y = Math.PI;
         scene.add(ai.mesh);
 
-        // --- 5. 공 & 이펙트 ---
+        // --- 5. 공 & 이펙트 & 가이드 ---
         const ball = new THREE.Mesh(new THREE.SphereGeometry(0.35, 32, 32), new THREE.MeshPhongMaterial({color: 0xccff00, emissive: 0x112200}));
         ball.castShadow = true;
         scene.add(ball);
 
-        // 공 그림자 가이드 (모바일 거리감 보정용)
-        const ballShadowGuide = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), new THREE.MeshBasicMaterial({color: 0x000000, opacity: 0.3, transparent: true}));
-        ballShadowGuide.rotation.x = -Math.PI/2;
-        ballShadowGuide.position.y = 0.02;
-        scene.add(ballShadowGuide);
+        // [시각 보조 강화] 공 위치 추적 가이드 (그림자 + 링)
+        const ballTracker = new THREE.Group();
+        scene.add(ballTracker);
+
+        // 1. 진한 그림자 (위치 파악용)
+        const shadowMesh = new THREE.Mesh(
+            new THREE.CircleGeometry(0.45, 32),
+            new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.5, transparent: true })
+        );
+        shadowMesh.rotation.x = -Math.PI / 2;
+        shadowMesh.position.y = 0.02;
+        ballTracker.add(shadowMesh);
+
+        // 2. 가이드 링 (노란색 테두리 - 시인성 확보)
+        const ringMesh = new THREE.Mesh(
+            new THREE.RingGeometry(0.45, 0.6, 32),
+            new THREE.MeshBasicMaterial({ color: 0xFFFF00, opacity: 0.8, transparent: true, side: THREE.DoubleSide })
+        );
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.y = 0.03; // 그림자보다 살짝 위
+        ballTracker.add(ringMesh);
 
         const trailSpheres = [];
-        const MAX_TRAIL = 12; // 트레일 길이 증가
+        const MAX_TRAIL = 12; 
         for(let i=0; i<MAX_TRAIL; i++) {
             const s = new THREE.Mesh(new THREE.SphereGeometry(0.3 - (i*0.02), 8, 8), 
                 new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.6 - (i*0.05)}));
@@ -423,11 +439,10 @@
             });
         }
 
-        // --- 6. 입력 처리 (모바일 + PC 통합) ---
+        // --- 6. 입력 처리 ---
         const inputState = { x: 0, z: 0, action: false };
         const keys = { w:false, a:false, s:false, d:false };
 
-        // PC 키보드
         window.addEventListener('keydown', e => { 
             const k = e.key.toLowerCase();
             if(keys.hasOwnProperty(k)) keys[k] = true; 
@@ -437,7 +452,6 @@
             if(keys.hasOwnProperty(k)) keys[k] = false; 
         });
 
-        // 모바일 조이스틱
         const joystickArea = document.getElementById('joystick-area');
         const joystickKnob = document.getElementById('joystick-knob');
         let joystickActive = false;
@@ -447,7 +461,6 @@
             joystickActive = true;
             const touch = e.touches[0];
             const rect = joystickArea.getBoundingClientRect();
-            // 조이스틱 중심 기준
             joyStartX = rect.left + rect.width / 2;
             joyStartY = rect.top + rect.height / 2;
             updateJoystick(touch.clientX, touch.clientY);
@@ -455,7 +468,7 @@
 
         joystickArea.addEventListener('touchmove', (e) => {
             if(joystickActive) {
-                e.preventDefault(); // 스크롤 방지
+                e.preventDefault(); 
                 updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
             }
         }, {passive: false});
@@ -470,7 +483,7 @@
         joystickArea.addEventListener('touchcancel', endJoystick);
 
         function updateJoystick(clientX, clientY) {
-            const maxDist = 40; // 조이스틱 가동 범위
+            const maxDist = 40; 
             let dx = clientX - joyStartX;
             let dy = clientY - joyStartY;
             const dist = Math.sqrt(dx*dx + dy*dy);
@@ -482,13 +495,10 @@
             }
 
             joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-            
-            // 입력값 정규화 (-1 ~ 1)
             inputState.x = dx / maxDist;
             inputState.z = dy / maxDist;
         }
 
-        // 액션 버튼 & 마우스 클릭 통합
         function handleActionStart() {
             triggerAction();
         }
@@ -500,11 +510,10 @@
         actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleActionStart(); }, {passive: false});
         actionBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleActionEnd(); });
         
-        // PC 클릭
         window.addEventListener('mousedown', handleActionStart);
         window.addEventListener('mouseup', handleActionEnd);
 
-        // --- 7. 게임 로직 ---
+        // --- 7. 게임 로직 (속도 조절) ---
         let ballVel = new THREE.Vector3();
         let scoreP = 0;
         let scoreA = 0;
@@ -517,26 +526,23 @@
 
         function triggerAction() {
             if (gameState === 'serve_hold' && currentServer === 'player') {
-                // 토스
                 gameState = 'serve_toss';
                 ballVel.set(0, 0.55, 0);
                 serveGuide.innerText = "TAP TO SMASH!";
                 serveGuide.style.color = "#FF4444";
             } else if (gameState === 'serve_toss' && currentServer === 'player') {
-                // 서브 스매시 (QOL: 높이 판정 완화)
                 if (ball.position.y > 0.8) { 
                     swingRacket(player);
                     gameState = 'playing';
-                    ballVel.set(0, 0.15, -0.85); // 속도 약간 조절
+                    // [속도 하향] 플레이어 서브 속도 감소 (-0.85 -> -0.7)
+                    ballVel.set(0, 0.15, -0.7); 
                     isSuperShot = true;
                     lastHitter = 'player';
                     serveGuide.style.display = 'none';
                     spawnParticles(ball.position, 0xFFA500);
                 }
             } else {
-                // 게임 중 스윙
                 player.isSmashReady = true;
-                // 공이 가까우면 즉시 스윙 시도 (반응성 향상)
                 checkPlayerHit(true);
             }
         }
@@ -602,76 +608,55 @@
             swingRacket(ai);
             gameState = 'playing';
             const aimX = (Math.random() - 0.5) * 0.3;
-            ballVel.set(aimX, 0.15, 0.65);
+            // [속도 하향] AI 서브 속도 감소 (0.65 -> 0.52)
+            ballVel.set(aimX, 0.15, 0.52);
             lastHitter = 'ai';
         }
 
         resetServe('player'); 
 
-        // 플레이어 타격 판정 로직 분리 (QOL 개선)
         function checkPlayerHit(forcedSwing = false) {
             if (gameState !== 'playing') return;
             
-            // 공이 플레이어 방향(z > 0)으로 오고 있거나 넘어오기 직전
             if (ballVel.z > 0) { 
-                
                 let success = false;
-
-                // [수정] 균형 잡힌 판정 (Balanced Hit)
-                // 무조건 히트 대신, 거리를 체크하되 반경을 넉넉하게 설정 (6.5)
-                // 기존(3.0 ~ 4.5)보다는 넓고, 무한대보다는 좁게
                 const dist = ball.position.distanceTo(player.mesh.position);
-                
-                // 공이 플레이어 앞쪽이나 살짝 뒤에 있을 때도 허용
-                // Z축 거리 차이 (깊이)가 너무 멀면 안됨 (예: 공이 네트에 있는데 베이스라인에서 휘두르는 경우 방지)
                 const zDist = Math.abs(ball.position.z - player.mesh.position.z);
 
                 if (forcedSwing) {
-                    // 버튼 눌렀을 때: 반경 6.5 이내면 성공 + 깊이 차이 8.0 이내
-                    if (dist < 6.5 && zDist < 8.0) {
-                        success = true;
-                    }
+                    if (dist < 6.5 && zDist < 8.0) success = true;
                 } else {
-                    // 일반 접촉 (몸에 닿음): 반경 4.5
                     if (dist < 4.5) success = true;
                 }
 
                 if (success) {
                     swingRacket(player);
-                    
-                    // 공 반사 처리
                     ballVel.z *= -1; 
-                    // 속도 보정 (너무 느려지지 않게)
-                    if (Math.abs(ballVel.z) < 0.6) ballVel.z = -0.7;
+                    
+                    // [속도 하향] 플레이어 타구 속도 감소
+                    if (Math.abs(ballVel.z) < 0.5) ballVel.z = -0.55; // 최소 속도 보정
 
-                    // 스매시/강타 여부
                     if(forcedSwing || player.isSmashReady) {
-                        ballVel.y = 0.2; // 낮고 빠르게
-                        ballVel.z = -0.95; 
+                        ballVel.y = 0.2;
+                        ballVel.z = -0.75; // 스매시 속도 감소 (-0.95 -> -0.75)
                         isSuperShot = true;
                         spawnParticles(ball.position, 0xFFA500);
                     } else {
                         ballVel.y = 0.45; 
+                        ballVel.z = Math.max(ballVel.z, -0.55); // 일반 타격도 느리게
                         isSuperShot = false;
                     }
 
-                    // [Magic Hit 방향 보정]
-                    // 멀리서 쳐도 공이 코트 안으로 들어가도록 보정
                     let aimX = 0;
                     const distToBall = ball.position.distanceTo(player.mesh.position);
-                    
                     if (distToBall > 5.0) {
-                        // 원격 타격 시: 조이스틱 방향 + 중앙 지향
                         aimX = (inputState.x * 0.3) + ((Math.random()-0.5) * 0.2); 
-                        // 너무 측면이면 중앙으로 휨
                         if (ball.position.x > 10) aimX -= 0.15;
                         if (ball.position.x < -10) aimX += 0.15;
                     } else {
-                        // 근접 타격 시: 물리적 위치 반영
                         aimX = (ball.position.x - player.mesh.position.x) * 0.3;
                         if (inputState.x !== 0) aimX += inputState.x * 0.2;
                     }
-
                     ballVel.x = aimX;
                     
                     lastHitter = 'player';
@@ -684,17 +669,16 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // 1. 플레이어 이동 (키보드 + 조이스틱 혼합)
+            // [속도 하향] 플레이어 이동 속도 감소 (0.4 -> 0.32)
             let moveX = 0;
             let moveZ = 0;
-            const speed = 0.4;
+            const speed = 0.32;
 
             if(keys.a) moveX -= 1;
             if(keys.d) moveX += 1;
             if(keys.w) moveZ -= 1;
             if(keys.s) moveZ += 1;
 
-            // 조이스틱 입력 합산
             moveX += inputState.x;
             moveZ += inputState.z;
 
@@ -706,7 +690,6 @@
 
             updateBallHoldPos();
 
-            // 2. AI 이동
             if(gameState === 'playing' || (gameState.startsWith('serve') && currentServer === 'ai')) {
                 let targetX = ai.mesh.position.x;
                 let targetZ = -22;
@@ -716,7 +699,6 @@
                     if(ballVel.y < 0 && ball.position.z > -10) targetZ = -10;
                     else targetZ = -22; 
                 } else if (gameState === 'serve_toss' && currentServer === 'ai') {
-                    // 제자리
                 } else {
                     targetX = 0; 
                 }
@@ -724,18 +706,18 @@
                 ai.mesh.position.z += (targetZ - ai.mesh.position.z) * 0.10;
             }
 
-            // 3. 공 물리
             if(gameState === 'playing' || gameState === 'serve_toss') {
                 ball.position.add(ballVel);
                 ballVel.y -= 0.012; 
                 
-                // 그림자 가이드 업데이트
-                ballShadowGuide.position.x = ball.position.x;
-                ballShadowGuide.position.z = ball.position.z;
-                // 공 높이에 따라 그림자 크기/투명도 조절
-                const shadowScale = 1 - Math.min(ball.position.y / 10, 0.5);
-                ballShadowGuide.scale.setScalar(shadowScale);
-                ballShadowGuide.material.opacity = 0.3 * shadowScale;
+                // [시각 보조 업데이트] 볼 트래커 위치 동기화
+                ballTracker.visible = true;
+                ballTracker.position.set(ball.position.x, 0, ball.position.z);
+                
+                // 높이에 따라 투명도/크기 조절 (높을수록 연해지지만 링은 잘 보이게)
+                const heightFactor = Math.min(ball.position.y / 8, 1.0);
+                shadowMesh.material.opacity = 0.6 * (1 - heightFactor * 0.5); // 그림자는 흐려짐
+                ringMesh.material.opacity = 0.8 * (1 - heightFactor * 0.3);   // 링은 비교적 선명
 
                 if (gameState === 'playing') {
                     ballVel.x *= 0.995;
@@ -761,9 +743,9 @@
                         const inX = Math.abs(ball.position.x) <= COURT_W/2 + 0.5;
                         const inZ = Math.abs(ball.position.z) <= COURT_H/2 + 0.5;
                         
-                        if(!inX || !inZ) { // OUT
+                        if(!inX || !inZ) { 
                             handleScore(lastHitter === 'player' ? 'ai' : 'player', "OUT!");
-                        } else { // IN (바운드)
+                        } else { 
                             ballVel.y *= -0.8; 
                             isSuperShot = false;
                         }
@@ -776,21 +758,26 @@
                     isSuperShot = false;
                 }
             } else {
-                ballShadowGuide.position.set(0, -100, 0); // 숨김
+                ballTracker.visible = false;
             }
 
-            // 4. 타격 판정 (루프 내에서 체크 - AI만)
             if (gameState === 'playing') {
-                // Player Hit Check -> 버튼 클릭 시 checkPlayerHit() 실행됨
-                
-                // AI Hit Check
                 const hitDist = 4.0; 
                 if(ballVel.z < 0 && ball.position.z < 0) {
                     if(ball.position.distanceTo(ai.mesh.position) < hitDist) {
                         swingRacket(ai);
                         ballVel.z *= -1;
-                        if(Math.random() > 0.6) { ballVel.z = 0.8; ballVel.y = 0.2; isSuperShot = true; }
-                        else { ballVel.z = 0.6; ballVel.y = 0.45; isSuperShot = false; }
+                        
+                        // [속도 하향] AI 반격 속도 감소
+                        if(Math.random() > 0.6) { 
+                            ballVel.z = 0.65; // (0.8 -> 0.65)
+                            ballVel.y = 0.2; 
+                            isSuperShot = true; 
+                        } else { 
+                            ballVel.z = 0.5; // (0.6 -> 0.5)
+                            ballVel.y = 0.45; 
+                            isSuperShot = false; 
+                        }
                         ballVel.x = (ball.position.x - ai.mesh.position.x) * 0.3;
                         lastHitter = 'ai';
                     }
@@ -824,7 +811,7 @@
         function swingRacket(char) {
             let f = 0;
             const anim = () => {
-                if(f < 6) { // 스윙 속도 향상
+                if(f < 6) { 
                     char.arm.rotation.x -= 0.5; 
                     f++; 
                     requestAnimationFrame(anim); 
@@ -846,7 +833,6 @@
                 if (gameState !== 'serve_hold') c.mesh.position.y = 0; 
                 c.mesh.rotation.x = 0; c.arm.rotation.z = 0;
                 
-                // 이동 시 몸 기울기 효과
                 if(c.isPlayer && (inputState.x !== 0 || keys.a || keys.d)) {
                    c.mesh.rotation.z = -(inputState.x || (keys.a?-1:1)) * 0.1;
                    c.mesh.rotation.y = -(inputState.x || (keys.a?-1:1)) * 0.2;
