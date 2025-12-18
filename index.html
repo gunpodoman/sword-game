@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Tennis: Nature Update</title>
+    <title>3D Tennis: Final Polish</title>
     <style>
         body { 
             margin: 0; 
@@ -177,8 +177,8 @@
         <div id="sub-msg">Touch Left to Move / Hold Right to Charge</div>
     </div>
 
-    <div id="serve-guide">HOLD RIGHT TO CHARGE SERVE!</div>
-    <div id="pc-controls">WASD: Move / Hold Click: Charge Shot</div>
+    <div id="serve-guide"></div> 
+    <div id="pc-controls">WASD: Move / SPACE: Charge Shot</div>
 
     <div id="touch-layer"></div>
 
@@ -197,7 +197,7 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // --- 1. 유틸리티 (텍스처 생성) ---
+        // --- 1. 유틸리티 ---
         function createNoiseTexture() {
             const size = 512;
             const canvas = document.createElement('canvas');
@@ -235,7 +235,6 @@
             return tex;
         }
 
-        // [점선 원 굵기 감소]
         function createDashedCircleTexture() {
             const size = 512;
             const canvas = document.createElement('canvas');
@@ -246,7 +245,7 @@
             ctx.beginPath();
             ctx.arc(size/2, size/2, size/2 - 10, 0, Math.PI*2);
             ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 5; // [수정] 굵기 감소 (15 -> 5)
+            ctx.lineWidth = 5; 
             ctx.setLineDash([40, 30]);
             ctx.stroke();
 
@@ -254,7 +253,7 @@
             return tex;
         }
 
-        // --- 2. 씬 & 카메라 설정 ---
+        // --- 2. 씬 & 카메라 ---
         const scene = new THREE.Scene();
         scene.fog = new THREE.Fog(0x87CEEB, 30, 90);
 
@@ -319,38 +318,6 @@
         createLine(0.4, 0.8, 0, 50/2); 
         createLine(0.4, 0.8, 0, -50/2);
 
-        // 경기장 벽
-        const wallGroup = new THREE.Group();
-        const wallMat = new THREE.MeshLambertMaterial({color: 0x2c3e50});
-        const adMat = new THREE.MeshBasicMaterial({color: 0x3498db}); 
-        
-        const backWall = new THREE.Mesh(new THREE.BoxGeometry(60, 5, 2), wallMat);
-        backWall.position.set(0, 2.5, -45);
-        backWall.castShadow = true; backWall.receiveShadow = true;
-        wallGroup.add(backWall);
-
-        const frontWall = backWall.clone();
-        frontWall.position.set(0, 2.5, 45);
-        wallGroup.add(frontWall);
-        
-        const sideWallGeo = new THREE.BoxGeometry(2, 5, 92);
-        const leftWall = new THREE.Mesh(sideWallGeo, wallMat);
-        leftWall.position.set(-31, 2.5, 0); leftWall.receiveShadow = true;
-        wallGroup.add(leftWall);
-        const rightWall = leftWall.clone();
-        rightWall.position.set(31, 2.5, 0);
-        wallGroup.add(rightWall);
-
-        const adBoard = new THREE.Mesh(new THREE.PlaneGeometry(20, 2), adMat);
-        adBoard.position.set(0, 3, -43.9);
-        wallGroup.add(adBoard);
-        const adBoard2 = adBoard.clone();
-        adBoard2.rotation.y = Math.PI;
-        adBoard2.position.set(0, 3, 43.9);
-        wallGroup.add(adBoard2);
-
-        scene.add(wallGroup);
-
         // 관중석
         const spectators = [];
         function createStand(x, z, rotY) {
@@ -385,51 +352,28 @@
         createStand(-35, 0, Math.PI/2); 
         createStand(35, 0, -Math.PI/2); 
 
-        // [데코레이션: 나무 추가]
+        // 나무
         function createTree(x, z) {
             const group = new THREE.Group();
-            // 줄기
-            const trunk = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.5, 0.8, 4, 6),
-                new THREE.MeshLambertMaterial({color: 0x8B4513})
-            );
-            trunk.position.y = 2;
-            trunk.castShadow = true; trunk.receiveShadow = true;
-            
-            // 잎 (2단)
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 4, 6), new THREE.MeshLambertMaterial({color: 0x8B4513}));
+            trunk.position.y = 2; trunk.castShadow = true; trunk.receiveShadow = true;
             const foliageMat = new THREE.MeshLambertMaterial({color: 0x228B22});
             const leaves1 = new THREE.Mesh(new THREE.ConeGeometry(3, 5, 8), foliageMat);
-            leaves1.position.y = 5;
-            leaves1.castShadow = true;
-            
+            leaves1.position.y = 5; leaves1.castShadow = true;
             const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(2.5, 4, 8), foliageMat);
-            leaves2.position.y = 7;
-            leaves2.castShadow = true;
-
+            leaves2.position.y = 7; leaves2.castShadow = true;
             group.add(trunk, leaves1, leaves2);
             group.position.set(x, 0, z);
             scene.add(group);
         }
-
-        // 경기장 주변에 나무 심기
-        for(let i=0; i<8; i++) {
-            createTree(-45, -55 + i*15); // 좌측 외부
-            createTree(45, -55 + i*15);  // 우측 외부
-        }
-        createTree(-20, -55); createTree(20, -55); // 뒤쪽
-        createTree(-20, 55); createTree(20, 55); // 앞쪽
+        for(let i=0; i<8; i++) { createTree(-45, -55 + i*15); createTree(45, -55 + i*15); }
+        createTree(-20, -55); createTree(20, -55); createTree(-20, 55); createTree(20, 55);
 
         // 네트
         const NET_HEIGHT = 2.2;
         const netGroup = new THREE.Group();
         const netTex = createNetTexture();
-        const netMat = new THREE.MeshBasicMaterial({
-            map: netTex, 
-            transparent:true, 
-            opacity: 0.95, 
-            side: THREE.DoubleSide,
-            alphaTest: 0.1 
-        });
+        const netMat = new THREE.MeshBasicMaterial({map: netTex, transparent:true, opacity: 0.95, side: THREE.DoubleSide, alphaTest: 0.1});
         const netMesh = new THREE.Mesh(new THREE.PlaneGeometry(COURT_W+2, NET_HEIGHT), netMat);
         netMesh.position.y = NET_HEIGHT/2;
         netGroup.add(netMesh);
@@ -473,7 +417,7 @@
         ai.mesh.rotation.y = Math.PI;
         scene.add(ai.mesh);
 
-        // [차지 범위 표시 원]
+        // 차지 범위 표시 원
         const chargeRingGeo = new THREE.PlaneGeometry(1, 1);
         const chargeRingMat = new THREE.MeshBasicMaterial({
             map: createDashedCircleTexture(),
@@ -538,19 +482,45 @@
         const inputState = { x: 0, z: 0 };
         const keys = { w:false, a:false, s:false, d:false };
         
-        let currentHitRadius = 2.5; // [수정] 기본 히트 범위 시작값 축소
+        let currentHitRadius = 2.5;
         let chargePower = 0.0; 
-
-        window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; });
-        window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
         
+        // PC 입력 상태
         let isMouseDown = false;
+        let isSpaceDown = false;
         let chargeStartTime = 0;
+
+        // 키보드 핸들러
+        window.addEventListener('keydown', e => { 
+            const k = e.key.toLowerCase();
+            if(keys.hasOwnProperty(k)) keys[k] = true;
+            if(e.code === 'Space') {
+                if(!isSpaceDown) {
+                    isSpaceDown = true;
+                    chargeStartTime = Date.now();
+                    handleInputStart();
+                }
+            }
+        });
+        
+        window.addEventListener('keyup', e => { 
+            const k = e.key.toLowerCase();
+            if(keys.hasOwnProperty(k)) keys[k] = false;
+            if(e.code === 'Space') {
+                if(isSpaceDown) {
+                    isSpaceDown = false;
+                    const dur = Math.min(Date.now() - chargeStartTime, 1000);
+                    handleInputEnd(dur / 1000);
+                }
+            }
+        });
+        
         window.addEventListener('mousedown', () => { isMouseDown = true; chargeStartTime = Date.now(); handleInputStart(); });
         window.addEventListener('mouseup', () => {
             if(isMouseDown) {
                 isMouseDown = false;
-                handleInputEnd(chargePower);
+                const dur = Math.min(Date.now() - chargeStartTime, 1000);
+                handleInputEnd(dur / 1000);
             }
         });
 
@@ -572,6 +542,7 @@
                 const guide = document.getElementById('serve-guide');
                 guide.innerText = "RELEASE TO SMASH!";
                 guide.style.color = "#FF4444";
+                guide.style.display = 'block'; // [수정] 다시 보이게 설정
                 if (chargeBarContainer.style.display !== 'block') chargeBarContainer.style.display = 'block';
             } else if (gameState === 'playing') {
                 player.isSmashReady = true;
@@ -636,7 +607,8 @@
                 }
                 if (t.identifier === touchActionId) {
                     touchActionId = null;
-                    handleInputEnd(chargePower);
+                    const duration = Math.min(Date.now() - actionStartTime, 1000);
+                    handleInputEnd(duration / 1000);
                 }
             }
         };
@@ -663,8 +635,8 @@
                 if (ball.position.y > 0.8) { 
                     swingRacket(player);
                     gameState = 'playing';
-                    const baseSpeed = -0.65;
-                    const extraSpeed = -0.25 * power; 
+                    const baseSpeed = -0.72;
+                    const extraSpeed = -0.4 * power; 
                     ballVel.set(0, 0.15, baseSpeed + extraSpeed);
                     if(power > 0.5) ballVel.y = 0.1;
 
@@ -696,7 +668,7 @@
                 if (success) {
                     swingRacket(player);
                     
-                    let returnSpeed = -0.55 - (power * 0.3); 
+                    let returnSpeed = -0.65 - (power * 0.4); 
                     let returnY = 0.45; 
 
                     if (power > 0.5) { 
@@ -755,9 +727,8 @@
             ballVel.set(0,0,0);
             updateBallHoldPos();
             if (currentServer === 'player') {
-                serveGuide.innerText = "HOLD RIGHT TO CHARGE!";
-                serveGuide.style.color = "#FFD700";
-                serveGuide.style.display = 'block';
+                // [수정] 초기 문구 제거
+                serveGuide.style.display = 'none';
             } else {
                 serveGuide.style.display = 'none';
                 setTimeout(aiToss, 1000);
@@ -774,22 +745,20 @@
             }
         }
         function aiToss() { if (gameState !== 'serve_hold' || currentServer !== 'ai') return; gameState = 'serve_toss'; ballVel.set(0, 0.55, 0); setTimeout(aiServeHit, 600); }
-        function aiServeHit() { if (gameState !== 'serve_toss') return; swingRacket(ai); gameState = 'playing'; ballVel.set((Math.random()-0.5)*0.3, 0.15, 0.50); lastHitter = 'ai'; bounceCount = 0; }
+        function aiServeHit() { if (gameState !== 'serve_toss') return; swingRacket(ai); gameState = 'playing'; ballVel.set((Math.random()-0.5)*0.3, 0.15, 0.55); lastHitter = 'ai'; bounceCount = 0; }
         resetServe('player'); 
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // [차지 로직 업데이트]
             let isCharging = false;
             let currentDur = 0;
-            if (touchActionId !== null || isMouseDown) {
+            if (touchActionId !== null || isMouseDown || isSpaceDown) {
                 isCharging = true;
-                currentDur = Date.now() - (isMouseDown ? chargeStartTime : actionStartTime);
+                currentDur = Date.now() - (isMouseDown || isSpaceDown ? chargeStartTime : actionStartTime);
             }
             chargePower = Math.min(currentDur / 1000, 1.0); 
 
-            // 게이지 & 점선 원 업데이트
             if (isCharging && (gameState === 'playing' || gameState === 'serve_hold' || gameState === 'serve_toss')) {
                 chargeBarContainer.style.display = 'block';
                 chargeBar.style.width = (chargePower * 100) + '%';
@@ -801,7 +770,6 @@
                 chargeBarContainer.style.top = y + 'px';
 
                 chargeRing.visible = true;
-                // [수정] 원 크기 감소 (2.5 시작, 최대 6.0)
                 currentHitRadius = 2.5 + (chargePower * 3.5); 
                 chargeRing.scale.setScalar(currentHitRadius * 2); 
                 chargeRing.position.x = player.mesh.position.x;
@@ -818,11 +786,8 @@
                 s.mesh.rotation.y = Math.sin(time * 0.5 + s.offset) * 0.1; 
             });
 
-            // 플레이어 이동
             let moveX = 0; let moveZ = 0;
             let currentSpeed = 0.32;
-            
-            // [수정] 차지 중 속도 감소
             if (isCharging) currentSpeed *= 0.5;
 
             if(keys.a) moveX -= 1; if(keys.d) moveX += 1;
@@ -839,7 +804,6 @@
 
             updateBallHoldPos();
 
-            // AI 이동
             if(gameState === 'playing' || (gameState.startsWith('serve') && currentServer === 'ai')) {
                 let targetX = ai.mesh.position.x;
                 let targetZ = -22;
@@ -852,7 +816,6 @@
                 ai.mesh.position.z += (targetZ - ai.mesh.position.z) * 0.10;
             }
 
-            // 공 물리
             if(gameState === 'playing' || gameState === 'serve_toss') {
                 ball.position.add(ballVel);
                 if (isSuperShot) ballVel.y -= 0.016; else ballVel.y -= 0.012;
@@ -876,7 +839,11 @@
                         ballVel.set(0,0,0);
                         if(currentServer === 'player') {
                             serveGuide.innerText = "Try Again!";
-                            setTimeout(() => { serveGuide.innerText = "HOLD TO CHARGE!"; }, 1000);
+                            setTimeout(() => { 
+                                // 초기화되면 다시 문구 제거 상태로 갈 수도 있지만, '실수'한 상황이므로 안내 표시
+                                serveGuide.innerText = "HOLD TO CHARGE!"; 
+                                serveGuide.style.display = 'block';
+                            }, 1000);
                         } else { resetServe('ai'); }
                         chargeBarContainer.style.display = 'none';
                         chargeRing.visible = false;
@@ -910,15 +877,14 @@
                 ballTracker.visible = false;
             }
 
-            // AI 타격
             if (gameState === 'playing') {
                 const hitDist = 4.0; 
                 if(ballVel.z < 0 && ball.position.z < 0) {
                     if(ball.position.distanceTo(ai.mesh.position) < hitDist) {
                         swingRacket(ai);
                         ballVel.z *= -1;
-                        if(Math.random() > 0.6) { ballVel.z = 0.6; ballVel.y = 0.2; isSuperShot = true; } 
-                        else { ballVel.z = 0.45; ballVel.y = 0.45; isSuperShot = false; }
+                        if(Math.random() > 0.6) { ballVel.z = 0.65; ballVel.y = 0.2; isSuperShot = true; } 
+                        else { ballVel.z = 0.5; ballVel.y = 0.45; isSuperShot = false; }
                         ballVel.x = (ball.position.x - ai.mesh.position.x) * 0.3;
                         lastHitter = 'ai';
                         bounceCount = 0; 
@@ -935,7 +901,7 @@
         function handleScore(winner, msg) {
             if (gameState === 'end') return; 
             gameState = 'end';
-            touchJoyId = null; touchActionId = null; isMouseDown = false;
+            touchJoyId = null; touchActionId = null; isMouseDown = false; isSpaceDown = false;
             joystickEl.style.display = 'none';
             chargeBarContainer.style.display = 'none';
             chargeRing.visible = false;
